@@ -145,7 +145,7 @@ def main():
     meta['env_info'] = env_info
     meta['config'] = cfg.pretty_text
     # log some basic info
-    logger.info(f'Distributed training: {distributed}') # distributedssss
+    logger.info(f'Distributed training: {distributed}') # distributedsssss
     logger.info(f'Config:\n{cfg.pretty_text}')
     
     # set random seeds
