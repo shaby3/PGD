@@ -112,9 +112,10 @@ def main():
     if args.gpu_ids is not None:
         cfg.gpu_ids = args.gpu_ids
     else:
-        cfg.gpu_ids = range(1) if args.gpus is None else range(args.gpus)
-
+        cfg.gpu_ids = range(1) if args.gpus is None else range(args.gpus) # args.gpu_ids = None / cfg.gpu_ids = (0,1)
+    
     # init distributed env first, since logger depends on the dist info.
+    # ars.launcher == pytorch
     if args.launcher == 'none':
         distributed = False
     else:
@@ -122,8 +123,7 @@ def main():
         init_dist(args.launcher, **cfg.dist_params)
         # re-set gpu_ids with distributed training mode
         _, world_size = get_dist_info()
-        cfg.gpu_ids = range(world_size)
-
+        cfg.gpu_ids = range(world_size) # 여기서 cfg.gpu_dis 설정됨 / range(0,3) / len(cfg.gpu_ids) = 3
     # create work_dir
     mmcv.mkdir_or_exist(osp.abspath(cfg.work_dir))
     # dump config
@@ -141,11 +141,11 @@ def main():
     env_info = '\n'.join([(f'{k}: {v}') for k, v in env_info_dict.items()])
     dash_line = '-' * 60 + '\n'
     logger.info('Environment info:\n' + dash_line + env_info + '\n' +
-                dash_line)
+                dash_line) # logger.info 는 "2023-05-16 21:41:45,787 - mmdet - INFO - Environment info:"
     meta['env_info'] = env_info
     meta['config'] = cfg.pretty_text
     # log some basic info
-    logger.info(f'Distributed training: {distributed}') # distributedsssss
+    logger.info(f'Distributed training: {distributed}') # distributed가 True임 왜..? launcher에 대한 명령은 없는데.
     logger.info(f'Config:\n{cfg.pretty_text}')
     
     # set random seeds
@@ -153,12 +153,12 @@ def main():
         logger.info(f'Set random seed to {args.seed}, '
                     f'deterministic: {args.deterministic}')
         set_random_seed(args.seed, deterministic=args.deterministic)
-    cfg.seed = args.seed
+    cfg.seed = args.seed # None
     meta['seed'] = args.seed
     meta['exp_name'] = osp.basename(args.config)
 
 
-
+    # distiller 선언
     distiller_cfg = cfg.get('distiller', None)
     if distiller_cfg is None:
         model = build_detector(
@@ -166,7 +166,7 @@ def main():
             train_cfg=cfg.get('train_cfg'),
             test_cfg=cfg.get('test_cfg'))
         model.init_weights()
-    else:
+    else: # 이 부분이 돌아감
         teacher_cfg = Config.fromfile(cfg.teacher_cfg)
         student_cfg = Config.fromfile(cfg.student_cfg)
 
@@ -176,12 +176,11 @@ def main():
         model.init_weights()
         model.init_weights_teacher()
 
-
-    if hasattr(model, '_init_offline'):
+    if hasattr(model, '_init_offline'): # 모델에 _init_offline 이라는 속성이 있는지 확인
         model._init_offline()
 
     datasets = [build_dataset(cfg.data.train)]
-    if len(cfg.workflow) == 2:
+    if len(cfg.workflow) == 2: # workflow는 보통 [('train',1)]
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.train.pipeline
         datasets.append(build_dataset(val_dataset))
