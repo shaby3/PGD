@@ -55,7 +55,7 @@ model = dict(
             reg_assigner=dict(
                 type='PGWAnchorModule',
                 topk=9,
-                alpha=0.6,
+                alpha=0.8,
                 low_bound=0.)
         ),
         allowed_border=-1,

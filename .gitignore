@@ -1,0 +1,47 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+mmdet/__pycache__/
+mmdet/apis/__pycache__/
+mmdet/core/__pycache__/
+mmdet/core/anchor/__pycache__/
+mmdet/core/bbox/__pycache__/
+mmdet/core/bbox/assigners/__pycache__/
+mmdet/core/bbox/coder/__pycache__/
+mmdet/core/bbox/iou_calculators/__pycache__/
+mmdet/core/bbox/match_costs/__pycache__/
+mmdet/core/bbox/samplers/__pycache__/
+mmdet/core/evaluation/__pycache__/
+mmdet/core/mask/__pycache__/
+mmdet/core/post_processing/__pycache__/
+mmdet/core/utils/__pycache__/
+mmdet/core/visualization/__pycache__/
+mmdet/datasets/__pycache__/
+mmdet/datasets/api_wrappers/__pycache__/
+mmdet/datasets/pipelines/__pycache__/
+mmdet/datasets/samplers/__pycache__/
+mmdet/distillation/__pycache__/
+mmdet/distillation/distillers/__pycache__/
+mmdet/distillation/losses/__pycache__/
+mmdet/models/__pycache__/
+mmdet/models/backbones/__pycache__/
+mmdet/models/dense_heads/__pycache__/
+mmdet/models/dense_heads/pgd_heads/__pycache__/
+mmdet/models/dense_heads/pgd_heads/utils/__pycache__/
+mmdet/models/detectors/__pycache__/
+mmdet/models/losses/__pycache__/
+mmdet/models/necks/__pycache__/
+mmdet/models/roi_heads/__pycache__/
+mmdet/models/roi_heads/bbox_heads/__pycache__/
+mmdet/models/roi_heads/mask_heads/__pycache__/
+mmdet/models/roi_heads/roi_extractors/__pycache__/
+mmdet/models/roi_heads/shared_heads/__pycache__/
+mmdet/models/utils/__pycache__/
+mmdet/utils/__pycache__/
+data/
+work_dirs

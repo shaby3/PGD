@@ -44,8 +44,12 @@ class PGWAnchorModule(torch.nn.Module):
 
         overlaps = cls_cost ** (1 - self.alpha) * overlaps ** self.alpha
 
-        bboxes_cx = (bboxes[:, 0] + bboxes[:, 2]) / 2.0
-        bboxes_cy = (bboxes[:, 1] + bboxes[:, 3]) / 2.0
+        bboxes_cx = (bbox_preds[:, 0] + bbox_preds[:, 2]) / 2.0
+        bboxes_cy = (bbox_preds[:, 1] + bbox_preds[:, 3]) / 2.0
+        
+        # bboxes_cx = (bboxes[:, 0] + bboxes[:, 2]) / 2.0
+        # bboxes_cy = (bboxes[:, 1] + bboxes[:, 3]) / 2.0
+
 
         # assign 0 by default
         assigned_gt_inds = overlaps.new_full((num_bboxes,), 0, dtype=torch.long)

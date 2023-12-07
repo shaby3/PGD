@@ -1,7 +1,10 @@
 _base_ = "base/1x_setting.py"
 
-alpha       = 0.15
+temperature = 0.8
+alpha       = 0.08
+delta       = 0.0008
 beta        = alpha * 0.5
+gamma       = alpha * 1.6
 
 distiller = dict(
     type='PredictionGuidedDistiller',
@@ -12,9 +15,12 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDClsLoss',
                                     name='loss_kd_cls_0',
+                                    temp_s=temperature,
+                                    temp_c=temperature,
                                     loss_weight=1.0,
                                     alpha=alpha,
                                     beta=beta,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -23,9 +29,12 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDClsLoss',
                                     name='loss_kd_cls_1',
-                                    loss_weight=1.0,
+                                    temp_s=temperature,
+                                    temp_c=temperature,
+                                    loss_weight=1.25,
                                     alpha=alpha,
                                     beta=beta,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -34,9 +43,12 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDClsLoss',
                                     name='loss_kd_cls_2',
-                                    loss_weight=1.0,
+                                    temp_s=temperature,
+                                    temp_c=temperature,
+                                    loss_weight=1.5,
                                     alpha=alpha,
                                     beta=beta,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -45,9 +57,12 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDClsLoss',
                                     name='loss_kd_cls_3',
-                                    loss_weight=1.0,
+                                    temp_s=temperature,
+                                    temp_c=temperature,
+                                    loss_weight=1.75,
                                     alpha=alpha,
                                     beta=beta,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -56,9 +71,12 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDClsLoss',
                                     name='loss_kd_cls_4',
-                                    loss_weight=1.0,
+                                    temp_s=temperature,
+                                    temp_c=temperature,
+                                    loss_weight=2.0,
                                     alpha=alpha,
                                     beta=beta,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -67,9 +85,9 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDRegLoss',
                                     name='loss_kd_reg_0',
-                                    loss_weight=1.0,
-                                    alpha=alpha,
-                                    beta=beta,
+                                    temp=temperature,
+                                    gamma=gamma,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -78,9 +96,9 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDRegLoss',
                                     name='loss_kd_reg_1',
-                                    loss_weight=1.0,
-                                    alpha=alpha,
-                                    beta=beta,
+                                    temp=temperature,
+                                    gamma=gamma,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -89,9 +107,9 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDRegLoss',
                                     name='loss_kd_reg_2',
-                                    loss_weight=1.0,
-                                    alpha=alpha,
-                                    beta=beta,
+                                    temp=temperature,
+                                    gamma=gamma,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -100,9 +118,9 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDRegLoss',
                                     name='loss_kd_reg_3',
-                                    loss_weight=1.0,
-                                    alpha=alpha,
-                                    beta=beta,
+                                    temp=temperature,
+                                    gamma=gamma,
+                                    delta=delta,
                                     )
                                ]
                       ),
@@ -111,9 +129,9 @@ distiller = dict(
                       output_hook=True,
                       methods=[dict(type='PGDRegLoss',
                                     name='loss_kd_reg_4',
-                                    loss_weight=1.0,
-                                    alpha=alpha,
-                                    beta=beta,
+                                    temp=temperature,
+                                    gamma=gamma,
+                                    delta=delta,
                                     )
                                ]
                       ),
