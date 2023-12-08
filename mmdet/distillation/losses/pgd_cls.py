@@ -37,7 +37,7 @@ class PGDClsLoss(nn.Module):
                                              mask_fg, mask_bg,
                                             )
 
-        loss = (self.loss_weight * self.alpha * fg_loss)# + (self.loss_weight * self.beta * bg_loss)
+        loss = (self.loss_weight * self.alpha * fg_loss) + (self.loss_weight * self.beta * bg_loss)
 
         return loss
 
