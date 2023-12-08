@@ -1,12 +1,20 @@
 import torch
+# from mmdet.core.bbox.iou_calculators import build_iou_calculator
 
 eps = 1e-10
 
-def get_back_weight(bboxes, gt_bboxes):
+def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, gt_labels):
     with torch.no_grad():
         bboxes = bboxes[:, :4]  # anchor bbox
+        # bbox_preds = bbox_preds.detach()
+        cls_scores = cls_scores.detach()
+        device = bboxes.device
+
+        max_cls_scores,_ = torch.sigmoid(cls_scores).max(dim=1)
 
         num_gt, num_bboxes = gt_bboxes.size(0), bboxes.size(0)
+        if num_gt == 0 or num_bboxes == 0:
+            return torch.zeros((num_bboxes,), dtype=cls_scores.dtype)
 
         x1 = bboxes[:, 0][:, None].repeat(1, num_gt)  # [n_bbox, n_gt]
         y1 = bboxes[:, 1][:, None].repeat(1, num_gt)
@@ -25,9 +33,14 @@ def get_back_weight(bboxes, gt_bboxes):
         valid = valid.to(dtype=bboxes.dtype)
 
         in_box = valid.sum(dim=1)
-        back_w = (in_box == 0).to(dtype=bboxes.dtype)
+        out_box = (in_box == 0).to(dtype=bboxes.dtype)
 
-        return back_w
+        max_cls_scores = max_cls_scores * out_box
+        _, max_cls_scores_inds = torch.topk(max_cls_scores,100)
+        back_w = torch.zeros_like(out_box,device=device)
+        back_w[max_cls_scores_inds] = 1
+
+        return back_w # shape: [num_bboxes]
 
 def get_back_weight_anchorfree(points, gt_bboxes):
     with torch.no_grad():

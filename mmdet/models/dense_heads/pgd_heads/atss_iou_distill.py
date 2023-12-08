@@ -279,7 +279,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
                                                       gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
         kd_value_reg_map = self.w_assigner_reg.assign(anchors, cls_scores_valid, bbox_preds_valid,
                                                       gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
-        kd_back_map = get_back_weight(anchors, gt_bboxes)
+        kd_back_map = get_back_weight(anchors, cls_scores_valid, bbox_preds_valid, gt_bboxes, gt_bboxes_ignore, gt_labels)
 
         sampling_result = self.sampler.sample(assign_result, anchors,
                                               gt_bboxes)
