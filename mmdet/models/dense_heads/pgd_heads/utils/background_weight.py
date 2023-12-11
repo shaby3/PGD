@@ -16,6 +16,7 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         if num_gt == 0 or num_bboxes == 0:
             return torch.zeros((num_bboxes,), dtype=cls_scores.dtype)
 
+
         x1 = bboxes[:, 0][:, None].repeat(1, num_gt)  # [n_bbox, n_gt]
         y1 = bboxes[:, 1][:, None].repeat(1, num_gt)
         x2 = bboxes[:, 2][:, None].repeat(1, num_gt)
@@ -36,9 +37,9 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         out_box = (in_box == 0).to(dtype=bboxes.dtype)
 
         max_cls_scores = max_cls_scores * out_box
-        _, max_cls_scores_inds = torch.topk(max_cls_scores,100)
+        max_cls_scores_value, max_cls_scores_inds = torch.topk(max_cls_scores,100)
         back_w = torch.zeros_like(out_box,device=device)
-        back_w[max_cls_scores_inds] = 1
+        back_w[max_cls_scores_inds] = max_cls_scores_value
 
         return back_w # shape: [num_bboxes]
 
@@ -61,14 +62,3 @@ def get_back_weight_anchorfree(points, gt_bboxes):
         back_w = (in_box == 0).to(dtype=gt_bboxes.dtype)
 
         return back_w
-
-
-
-
-
-
-
-
-
-
-

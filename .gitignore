@@ -45,3 +45,4 @@ mmdet/models/utils/__pycache__/
 mmdet/utils/__pycache__/
 data/
 work_dirs
+work_configs
