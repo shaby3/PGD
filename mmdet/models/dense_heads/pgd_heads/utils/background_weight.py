@@ -9,13 +9,12 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         # bbox_preds = bbox_preds.detach()
         cls_scores = cls_scores.detach()
         device = bboxes.device
-
-        max_cls_scores,_ = torch.sigmoid(cls_scores).max(dim=1)
+        
+        max_cls_scores,_ = torch.sigmoid(cls_scores[:,gt_labels]).max(dim=1)
 
         num_gt, num_bboxes = gt_bboxes.size(0), bboxes.size(0)
         if num_gt == 0 or num_bboxes == 0:
             return torch.zeros((num_bboxes,), dtype=cls_scores.dtype)
-
 
         x1 = bboxes[:, 0][:, None].repeat(1, num_gt)  # [n_bbox, n_gt]
         y1 = bboxes[:, 1][:, None].repeat(1, num_gt)
@@ -37,9 +36,14 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         out_box = (in_box == 0).to(dtype=bboxes.dtype)
 
         max_cls_scores = max_cls_scores * out_box
-        max_cls_scores_value, max_cls_scores_inds = torch.topk(max_cls_scores,100)
+
+        cls_score_thr = 0.05
+        over_cls_score_inds = torch.nonzero(max_cls_scores >= cls_score_thr).squeeze()
+        # max_cls_scores_values, max_cls_scores_inds = torch.topk(max_cls_scores,100)
+        # print('over_cls_score_inds',over_cls_score_inds.shape)
+
         back_w = torch.zeros_like(out_box,device=device)
-        back_w[max_cls_scores_inds] = max_cls_scores_value
+        back_w[over_cls_score_inds] = 1
 
         return back_w # shape: [num_bboxes]
 
