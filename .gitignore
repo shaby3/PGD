@@ -46,3 +46,4 @@ mmdet/utils/__pycache__/
 data/
 work_dirs
 work_configs
+tmp
