@@ -1,16 +1,20 @@
 import torch
-# from mmdet.core.bbox.iou_calculators import build_iou_calculator
+from mmdet.core.bbox.iou_calculators import build_iou_calculator
 
 eps = 1e-10
 
 def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, gt_labels):
     with torch.no_grad():
         bboxes = bboxes[:, :4]  # anchor bbox
-        # bbox_preds = bbox_preds.detach()
+        bbox_preds = bbox_preds.detach()
         cls_scores = cls_scores.detach()
         device = bboxes.device
         
-        max_cls_scores,_ = torch.sigmoid(cls_scores[:,gt_labels]).max(dim=1)
+        dict_iou_calculator = dict(type='BboxOverlaps2D')
+        iou_calculator = build_iou_calculator(dict_iou_calculator)
+
+        cls_score = torch.sigmoid(cls_scores[:,gt_labels])
+        iou_score = iou_calculator(bbox_preds,gt_bboxes)
 
         num_gt, num_bboxes = gt_bboxes.size(0), bboxes.size(0)
         if num_gt == 0 or num_bboxes == 0:
@@ -35,15 +39,21 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         in_box = valid.sum(dim=1)
         out_box = (in_box == 0).to(dtype=bboxes.dtype)
 
-        max_cls_scores = max_cls_scores * out_box
+        alpha = 0.2
+        topk = 100
 
-        cls_score_thr = 0.05
-        over_cls_score_inds = torch.nonzero(max_cls_scores >= cls_score_thr).squeeze()
-        # max_cls_scores_values, max_cls_scores_inds = torch.topk(max_cls_scores,100)
+        quality_score = cls_score ** (1-alpha) * iou_score ** (alpha)
+
+        out_box = out_box.unsqueeze(dim=1)
+        out_quality_score = quality_score * out_box
+
+        max_quality_score,_ = torch.max(out_quality_score,dim=1)
+        
+        max_quality_scores_values, max_quality_scores_inds = torch.topk(max_quality_score,topk)
         # print('over_cls_score_inds',over_cls_score_inds.shape)
 
-        back_w = torch.zeros_like(out_box,device=device)
-        back_w[over_cls_score_inds] = 1
+        back_w = torch.zeros_like(out_box,device=device).squeeze(dim=1)
+        back_w[max_quality_scores_inds] = max_quality_scores_values
 
         return back_w # shape: [num_bboxes]
 
