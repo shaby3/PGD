@@ -6,6 +6,7 @@ from mmdet.core import (anchor_inside_flags,
                         reduce_mean, unmap)
 from mmdet.models.builder import HEADS
 from mmdet.models.dense_heads.atss_iou_head import ATSSIoUHead
+import numpy as np
 
 from .utils.builder import build_distill_weight
 from .utils.background_weight import get_back_weight
@@ -274,11 +275,13 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
         assign_result = self.assigner.assign(anchors, num_level_anchors_inside,
                                              gt_bboxes, gt_bboxes_ignore,
                                              gt_labels)
+        positive_inds = torch.nonzero(assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
+
         bbox_preds_valid = self.bbox_coder.decode(anchors, bbox_preds_valid)
         kd_value_cls_map = self.w_assigner_cls.assign(anchors, cls_scores_valid, bbox_preds_valid,
-                                                      gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
+                                                      gt_bboxes, anchor_levels, positive_inds, gt_bboxes_ignore, gt_labels)
         kd_value_reg_map = self.w_assigner_reg.assign(anchors, cls_scores_valid, bbox_preds_valid,
-                                                      gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
+                                                      gt_bboxes, anchor_levels, positive_inds, gt_bboxes_ignore, gt_labels)
         kd_back_map = get_back_weight(anchors, cls_scores_valid, bbox_preds_valid, gt_bboxes, gt_bboxes_ignore, gt_labels)
 
         sampling_result = self.sampler.sample(assign_result, anchors,
@@ -293,6 +296,14 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
         label_weights = anchors.new_zeros(num_valid_anchors, dtype=torch.float)
 
         pos_inds = sampling_result.pos_inds
+        # tmp_inds = kd_value_cls_map.nonzero(as_tuple=False).squeeze(-1)
+        # pos_numpy = pos_inds.detach().cpu().numpy()
+        # tmp_numpy = tmp_inds.detach().cpu().numpy()
+
+        # intersect = np.intersect1d(pos_numpy,tmp_numpy)
+        # print('intersect',intersect)
+        # print('pos - intersect: ', np.setdiff1d(pos_numpy,intersect))
+        # print('tmp - intersect: ', np.setdiff1d(tmp_numpy,intersect),'\n')
         neg_inds = sampling_result.neg_inds
         if len(pos_inds) > 0:
             if hasattr(self, 'bbox_coder'):

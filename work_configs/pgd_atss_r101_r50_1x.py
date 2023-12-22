@@ -1,8 +1,8 @@
 _base_ = "base/1x_setting.py"
 
-alpha       = 0.17
+alpha       = 0.13
 # beta        = alpha * 0.5
-beta        = alpha * 3
+beta        = alpha * 0.5
 
 distiller = dict(
     type='PredictionGuidedDistiller',

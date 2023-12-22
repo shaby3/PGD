@@ -47,3 +47,4 @@ data/
 work_dirs
 work_configs
 tmp
+mmdet/models/dense_heads/pgd_heads/utils/pgw_anchor_based copy.py
