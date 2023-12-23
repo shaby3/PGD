@@ -31,9 +31,9 @@ class PredictionGuidedDistiller(DistillBaseDetector):
         if type(self.student.bbox_head) is DDOD_Distill_Head:
             student_loss, label_assign = self.student.bbox_head.loss(*student_preds, *teacher_preds,
                                                                      gt_bboxes, gt_labels, img_metas, gt_bboxes_ignore,
-                                                                     ret_label_assign=True)
+                                                                     ret_label_assign=True) 
         elif type(self.student.bbox_head) is ATSSIoUHeadDistill:
-            student_loss, label_assign = self.student.bbox_head.loss(*student_preds, *teacher_preds,
+            student_loss, label_assign = self.student.bbox_head.loss(*student_preds, *teacher_preds,x_teacher,
                                                                      gt_bboxes, gt_labels, img_metas, gt_bboxes_ignore,
                                                                      ret_label_assign=True)
         elif type(self.student.bbox_head) is GFLDistillHead:

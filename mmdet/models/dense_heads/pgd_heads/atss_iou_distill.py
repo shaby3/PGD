@@ -6,7 +6,6 @@ from mmdet.core import (anchor_inside_flags,
                         reduce_mean, unmap)
 from mmdet.models.builder import HEADS
 from mmdet.models.dense_heads.atss_iou_head import ATSSIoUHead
-import numpy as np
 
 from .utils.builder import build_distill_weight
 from .utils.background_weight import get_back_weight
@@ -41,6 +40,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
              cls_scores_offline,
              bbox_preds_offline,
              iou_preds_offline,
+             teacher_features,
              gt_bboxes,
              gt_labels,
              img_metas,
@@ -79,6 +79,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
             valid_flag_list,
             cls_scores_offline,
             bbox_preds_offline,
+            teacher_features,
             gt_bboxes,
             img_metas,
             gt_bboxes_ignore_list=gt_bboxes_ignore,
@@ -122,6 +123,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
                     valid_flag_list,
                     cls_scores,
                     bbox_preds,
+                    teacher_features,
                     gt_bboxes_list,
                     img_metas,
                     gt_bboxes_ignore_list=None,
@@ -157,15 +159,18 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
         num_levels = len(cls_scores)
         cls_score_list = []
         bbox_pred_list = []
+        tea_feat_list = []
         for i in range(num_imgs):
-            tmp_cls_list = [];
+            tmp_cls_list = []
             tmp_bbox_list = []
+            tmp_tea_list = []
             for j in range(num_levels):
                 cls_score = cls_scores[j][i].permute(1, 2, 0).reshape(-1, self.cls_out_channels)
                 bbox_pred = bbox_preds[j][i].permute(1, 2, 0).reshape(-1, 4)
-                tmp_cls_list.append(cls_score); tmp_bbox_list.append(bbox_pred)
-            cat_cls_score = torch.cat(tmp_cls_list, dim=0); cat_bbox_pred = torch.cat(tmp_bbox_list, dim=0)
-            cls_score_list.append(cat_cls_score); bbox_pred_list.append(cat_bbox_pred)
+                teacher_feat = teacher_features[j][i].permute(1,2,0).reshape(-1,256)
+                tmp_cls_list.append(cls_score); tmp_bbox_list.append(bbox_pred); tmp_tea_list.append(teacher_feat)
+            cat_cls_score = torch.cat(tmp_cls_list, dim=0); cat_bbox_pred = torch.cat(tmp_bbox_list, dim=0); cat_tea_feat = torch.cat(tmp_tea_list, dim=0)
+            cls_score_list.append(cat_cls_score); bbox_pred_list.append(cat_bbox_pred); tea_feat_list.append(cat_tea_feat)
 
         (all_anchors, all_labels, all_label_weights, all_bbox_targets,
          all_bbox_weights, pos_inds_list, neg_inds_list, all_kd_value_cls_map, all_kd_value_reg_map, all_kd_back_map) = multi_apply(
@@ -174,6 +179,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
             valid_flag_list,
             cls_score_list,
             bbox_pred_list,
+            tea_feat_list,
             num_level_anchors_list,
             gt_bboxes_list,
             gt_bboxes_ignore_list,
@@ -211,6 +217,7 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
                            valid_flags,
                            cls_scores,
                            bbox_preds,
+                           teacher_feature,
                            num_level_anchors,
                            gt_bboxes,
                            gt_bboxes_ignore,
@@ -267,27 +274,27 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
             anchor_levels[sum(num_level_anchors[:i]):sum(num_level_anchors[:i + 1])] = i
         anchor_levels = anchor_levels[inside_flags]
 
+        teacher_feature_valid = teacher_feature[inside_flags, :]
         bbox_preds_valid = bbox_preds[inside_flags, :]
         cls_scores_valid = cls_scores[inside_flags, :]
 
+    
         num_level_anchors_inside = self.get_num_level_anchors_inside(
             num_level_anchors, inside_flags)
         assign_result = self.assigner.assign(anchors, num_level_anchors_inside,
                                              gt_bboxes, gt_bboxes_ignore,
                                              gt_labels)
-        positive_inds = torch.nonzero(assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
-
         bbox_preds_valid = self.bbox_coder.decode(anchors, bbox_preds_valid)
         kd_value_cls_map = self.w_assigner_cls.assign(anchors, cls_scores_valid, bbox_preds_valid,
-                                                      gt_bboxes, anchor_levels, positive_inds, gt_bboxes_ignore, gt_labels)
+                                                      gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
         kd_value_reg_map = self.w_assigner_reg.assign(anchors, cls_scores_valid, bbox_preds_valid,
-                                                      gt_bboxes, anchor_levels, positive_inds, gt_bboxes_ignore, gt_labels)
-        kd_back_map = get_back_weight(anchors, cls_scores_valid, bbox_preds_valid, gt_bboxes, gt_bboxes_ignore, gt_labels)
+                                                      gt_bboxes, anchor_levels, gt_bboxes_ignore, gt_labels)
+        kd_back_map = get_back_weight(anchors, cls_scores_valid, bbox_preds_valid,teacher_feature_valid,num_level_anchors_inside, gt_bboxes, gt_bboxes_ignore, gt_labels)
 
         sampling_result = self.sampler.sample(assign_result, anchors,
                                               gt_bboxes)
 
-        num_valid_anchors = anchors.shape[0]
+        num_valid_anchors = anchors.shape[0] 
         bbox_targets = torch.zeros_like(anchors)
         bbox_weights = torch.zeros_like(anchors)
         labels = anchors.new_full((num_valid_anchors,),
@@ -296,14 +303,6 @@ class ATSSIoUHeadDistill(ATSSIoUHead):
         label_weights = anchors.new_zeros(num_valid_anchors, dtype=torch.float)
 
         pos_inds = sampling_result.pos_inds
-        # tmp_inds = kd_value_cls_map.nonzero(as_tuple=False).squeeze(-1)
-        # pos_numpy = pos_inds.detach().cpu().numpy()
-        # tmp_numpy = tmp_inds.detach().cpu().numpy()
-
-        # intersect = np.intersect1d(pos_numpy,tmp_numpy)
-        # print('intersect',intersect)
-        # print('pos - intersect: ', np.setdiff1d(pos_numpy,intersect))
-        # print('tmp - intersect: ', np.setdiff1d(tmp_numpy,intersect),'\n')
         neg_inds = sampling_result.neg_inds
         if len(pos_inds) > 0:
             if hasattr(self, 'bbox_coder'):
