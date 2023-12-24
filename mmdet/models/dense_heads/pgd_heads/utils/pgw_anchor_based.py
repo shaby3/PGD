@@ -27,14 +27,12 @@ class PGWAnchorModule(torch.nn.Module):
                bbox_preds,
                gt_bboxes,
                bbox_levels,
-               positive_inds,
                gt_bboxes_ignore=None,
                gt_labels=None):
 
         bboxes = bboxes[:, :4]  # anchor bbox
         bbox_preds = bbox_preds.detach()
         cls_scores = cls_scores.detach()
-        device = bboxes.device
 
         num_gt, num_bboxes = gt_bboxes.size(0), bboxes.size(0)
         if num_gt == 0 or num_bboxes == 0:
@@ -46,11 +44,14 @@ class PGWAnchorModule(torch.nn.Module):
 
         overlaps = cls_cost ** (1 - self.alpha) * overlaps ** self.alpha
 
-        quality_score = torch.max(overlaps,dim=1)[0] # shape: [num_bbox]
+        bboxes_cx = (bbox_preds[:, 0] + bbox_preds[:, 2]) / 2.0
+        bboxes_cy = (bbox_preds[:, 1] + bbox_preds[:, 3]) / 2.0
         
-        pos = torch.zeros_like(quality_score,device=device)
-        pos[positive_inds] = 1
+        # bboxes_cx = (bboxes[:, 0] + bboxes[:, 2]) / 2.0
+        # bboxes_cy = (bboxes[:, 1] + bboxes[:, 3]) / 2.0
 
+
+        # assign 0 by default
         assigned_gt_inds = overlaps.new_full((num_bboxes,), 0, dtype=torch.long)
 
         if (self.ignore_iof_thr > 0 and gt_bboxes_ignore is not None
@@ -61,12 +62,52 @@ class PGWAnchorModule(torch.nn.Module):
             ignore_idxs = ignore_max_overlaps > self.ignore_iof_thr
             assigned_gt_inds[ignore_idxs] = -1
 
-        quality_score = quality_score * pos
+        _, topk_idxs = overlaps.topk(self.topk, dim=0, largest=True)  # [topk, num_gt]
+        candidate_idxs = topk_idxs
 
-        quality_score[assigned_gt_inds == -1] = 0.
-        quality_score[quality_score < self.low_bound] = 0.
+        candidate_cx = bboxes_cx[candidate_idxs.view(-1)].reshape(candidate_idxs.shape)  # [topk, num_gt]
+        candidate_cy = bboxes_cy[candidate_idxs.view(-1)].reshape(candidate_idxs.shape)  # [topk, num_gt]
+        candidate_pos = torch.stack((candidate_cx.transpose(0, 1), candidate_cy.transpose(0, 1)),
+                                    dim=-1)  # [num_gt, topk, 2]
 
-        return quality_score
+        if self.topk != 1:
+            miu, sigma, inverse, deter = mle_2d_gaussian_2(candidate_pos)
+
+        x1 = bboxes[:, 0][:, None].repeat(1, num_gt)  # [n_bbox, n_gt]
+        y1 = bboxes[:, 1][:, None].repeat(1, num_gt)
+        x2 = bboxes[:, 2][:, None].repeat(1, num_gt)
+        y2 = bboxes[:, 3][:, None].repeat(1, num_gt)
+
+        cx = (x1 + x2) * 0.5  # [n_bbox, n_gt]
+        cy = (y1 + y2) * 0.5  # [n_bbox, n_gt]
+
+        gx1 = gt_bboxes[:, 0][None, :].repeat(num_bboxes, 1)  # [n_bbox, n_gt]
+        gy1 = gt_bboxes[:, 1][None, :].repeat(num_bboxes, 1)
+        gx2 = gt_bboxes[:, 2][None, :].repeat(num_bboxes, 1)
+        gy2 = gt_bboxes[:, 3][None, :].repeat(num_bboxes, 1)
+
+        valid = ((cx - gx1) > eps) * ((cy - gy1) > eps) * ((gx2 - cx) > eps) * ((gy2 - cy) > eps)
+        valid = valid.to(dtype=cls_scores.dtype)
+
+        if self.topk != 1:
+            pos_diff = (candidate_pos - miu)[:, :, None, :]  # [num_gt, topk, 1, 2]
+            candidate_w = torch.exp(-0.5 * torch.matmul(torch.matmul(pos_diff, inverse[:, None, :, :]),
+                                                            pos_diff.transpose(2, 3)))  # [num_gt, topk]
+            candidate_w = candidate_w.transpose(0, 1).reshape(self.topk, num_gt)
+            w = torch.zeros_like(bboxes_cx).reshape(-1, 1).repeat(1, num_gt)
+            for i in range(num_gt):
+                w[candidate_idxs[:, i], i] = candidate_w[:, i]
+        else:
+            w = torch.zeros_like(bboxes_cx).reshape(-1, 1).repeat(1, num_gt)
+            for i in range(num_gt):
+                w[candidate_idxs[:, i], i] = 1.
+
+        w = w * valid
+        w = torch.max(w, dim=1)[0]
+        w[assigned_gt_inds == -1] = 0.
+        w[w < self.low_bound] = 0.
+
+        return w
 
     def forward(self, **kwargs):
         pass
@@ -87,13 +128,3 @@ def mle_2d_gaussian_2(sampled_data):
     inverse[:, 1, 1] = sigma[:, 0, 0]
     inverse /= (deter[:,None,None]+1e-10)
     return miu, sigma, inverse, deter
-
-
-
-
-
-
-
-
-
-

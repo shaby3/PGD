@@ -1,6 +1,6 @@
 _base_ = "base/1x_setting.py"
 
-alpha       = 0.13
+alpha       = 0.17
 # beta        = alpha * 0.5
 beta        = alpha * 0.5
 
