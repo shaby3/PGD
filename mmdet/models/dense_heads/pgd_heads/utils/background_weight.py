@@ -10,7 +10,7 @@ def get_back_weight(bboxes,cls_scores, bbox_preds, gt_bboxes, gt_bboxes_ignore, 
         cls_scores = cls_scores.detach()
         device = bboxes.device
 
-        max_cls_scores,_ = torch.sigmoid(cls_scores).max(dim=1)
+        max_cls_scores,_ = torch.sigmoid(cls_scores[:,gt_labels]).max(dim=1)
 
         num_gt, num_bboxes = gt_bboxes.size(0), bboxes.size(0)
         if num_gt == 0 or num_bboxes == 0:
